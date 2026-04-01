@@ -3,7 +3,7 @@
 
 risk_explain_prompt = ChatPromptTemplate.from_template(
     """
-你是合同校审助手。请基于规则结果、命中条款和检索到的上下文，生成简洁、专业、可执行的风险解释。
+你是合同校审助手。请基于规则结果、命中条款和检索到的上下文，生成简洁、专业、可执行的分析。
 
 合同类型:
 {contract_type}
@@ -26,8 +26,8 @@ risk_explain_prompt = ChatPromptTemplate.from_template(
 相关上下文:
 {retrieved_context}
 
-请输出两部分：
-1. 风险解释：说明为什么这是风险。
-2. 修改建议：给出更可执行的修改方向。
+请严格按下面格式输出，不要添加其他标题或解释：
+风险解释：<一段简洁解释>
+修改建议：<一段可直接落地的建议>
 """
 )

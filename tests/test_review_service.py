@@ -3,7 +3,8 @@
 from langchain_core.documents import Document
 
 from app.core.config import settings
-from app.schemas.review import ReviewRequest
+from app.llm.reviewer import LLMReviewer
+from app.schemas.review import RiskItem, ReviewRequest
 from app.services.review_service import ReviewService
 
 
@@ -35,6 +36,7 @@ class FakeRetriever:
 class FakeLLMReviewer:
     def enrich_risk(self, risk, contract_type: str, clause_text: str, retrieved_contexts: list[str]):
         risk.ai_explanation = f"{contract_type}存在风险：{risk.title}"
+        risk.suggestion = f"优先采用 LLM 建议：{risk.title}"
         return risk
 
 
@@ -52,6 +54,7 @@ class ReviewServiceTests(unittest.TestCase):
         self.assertTrue(response.risks[0].basis_sources)
         self.assertIn("民法典合同编", response.risks[0].basis_sources[0].source_title)
         self.assertTrue(response.risks[0].ai_explanation)
+        self.assertIn("优先采用 LLM 建议", response.risks[0].suggestion)
 
     def test_missing_llm_config_raises_runtime_error(self) -> None:
         service = ReviewService()
@@ -74,6 +77,31 @@ class ReviewServiceTests(unittest.TestCase):
             self.assertIn("法律知识库加载失败", str(ctx.exception))
         finally:
             settings.knowledge_vector_store_dir = original_dir
+
+    def test_llm_reviewer_parse_sections(self) -> None:
+        reviewer = LLMReviewer.__new__(LLMReviewer)
+        explanation, suggestion = reviewer._parse_sections("风险解释：这是风险解释。\n修改建议：这是 LLM 修改建议。")
+
+        self.assertEqual(explanation, "这是风险解释。")
+        self.assertEqual(suggestion, "这是 LLM 修改建议。")
+
+    def test_llm_suggestion_overrides_rule_suggestion(self) -> None:
+        reviewer = LLMReviewer.__new__(LLMReviewer)
+        risk = RiskItem(
+            rule_id="GEN_003",
+            title="付款约定不明确",
+            severity="medium",
+            description="desc",
+            evidence="evidence",
+            suggestion="规则建议",
+        )
+        explanation, suggestion = reviewer._parse_sections("风险解释：这是风险解释。\n修改建议：这是 LLM 修改建议。")
+        risk.ai_explanation = explanation
+        if suggestion:
+            risk.suggestion = suggestion
+
+        self.assertEqual(risk.ai_explanation, "这是风险解释。")
+        self.assertEqual(risk.suggestion, "这是 LLM 修改建议。")
 
 
 if __name__ == "__main__":

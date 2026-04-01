@@ -1,4 +1,6 @@
-﻿from app.schemas.review import RiskItem
+﻿import re
+
+from app.schemas.review import RiskItem
 
 from app.llm.client import get_chat_model
 from app.llm.prompts import risk_explain_prompt
@@ -28,6 +30,17 @@ class LLMReviewer:
                 "retrieved_context": context_text,
             }
         )
-        risk.ai_explanation = result.content
-        risk.retrieved_contexts = retrieved_contexts
+        explanation, suggestion = self._parse_sections(result.content)
+        risk.ai_explanation = explanation
+        if suggestion:
+            risk.suggestion = suggestion
         return risk
+
+    def _parse_sections(self, content: str) -> tuple[str, str | None]:
+        text = content.strip()
+        explanation_match = re.search(r"风险解释[:：]\s*(.+?)(?=\n\s*修改建议[:：]|$)", text, re.S)
+        suggestion_match = re.search(r"修改建议[:：]\s*(.+)$", text, re.S)
+
+        explanation = explanation_match.group(1).strip() if explanation_match else text
+        suggestion = suggestion_match.group(1).strip() if suggestion_match else None
+        return explanation, suggestion
