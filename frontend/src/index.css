@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Georgia", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+}
+
+@layer base {
+  body {
+    @apply bg-[#F8FAFC] text-slate-900;
+  }
+}
+
+.markdown-body {
+  @apply text-slate-800 leading-relaxed;
+}
+
+.markdown-body h1 {
+  @apply text-2xl font-bold mb-4;
+}
+
+.markdown-body p {
+  @apply mb-4;
+}
