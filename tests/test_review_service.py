@@ -1,4 +1,5 @@
 ﻿import unittest
+from unittest import mock
 
 from langchain_core.documents import Document
 
@@ -71,7 +72,7 @@ class ReviewServiceTests(unittest.TestCase):
         original_dir = settings.knowledge_vector_store_dir
         settings.knowledge_vector_store_dir = "."
         try:
-            with unittest.mock.patch("app.services.review_service.load_vector_store", side_effect=ValueError("broken index")):
+            with mock.patch("app.services.review_service.load_vector_store", side_effect=ValueError("broken index")):
                 with self.assertRaises(RuntimeError) as ctx:
                     service._require_knowledge_retriever()
             self.assertIn("法律知识库加载失败", str(ctx.exception))
@@ -106,3 +107,4 @@ class ReviewServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -15,6 +15,7 @@ env/
 # Build and packaging
 build/
 dist/
+frontend/dist/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
@@ -43,5 +44,21 @@ desktop.ini
 
 # Local agent / workspace artifacts
 .codex/
+.agents/
+.run/
 AGENTS.md
+frontend.md
+memory.md
+skills-lock.json
 knowledge/ingested/
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/coverage/
+frontend/.DS_Store
+frontend/*.log
+frontend/.env*
+frontend/!.env.example
+frontend/README.md
