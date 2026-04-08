@@ -21,7 +21,7 @@ SAMPLE_TEXT = """采购合同
 
 
 class FakeRetriever:
-    def retrieve_documents(self, query: str, k: int = 3):
+    def _docs(self):
         return [
             Document(
                 page_content="第一百零九条 当事人应当按照约定全面履行自己的义务。",
@@ -32,6 +32,12 @@ class FakeRetriever:
                 },
             )
         ]
+
+    def retrieve_documents(self, query: str, k: int = 3):
+        return self._docs()[:k]
+
+    def retrieve_documents_with_rerank(self, query: str, fetch_k: int = 12, final_k: int = 4):
+        return self._docs()[:final_k]
 
 
 class FakeLLMReviewer:
@@ -107,4 +113,3 @@ class ReviewServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

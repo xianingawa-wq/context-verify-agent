@@ -3,7 +3,6 @@
 import json
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 from app.core.config import settings
 from app.llm.client import get_chat_model
@@ -159,14 +158,9 @@ class ChatService:
         return self.llm
 
     def _require_knowledge_retriever(self) -> ContractKnowledgeRetriever:
-        vector_store_dir = Path(settings.knowledge_vector_store_dir)
-        if not vector_store_dir.exists():
-            raise RuntimeError(
-                f"法律知识库未构建，请先生成向量索引目录: {settings.knowledge_vector_store_dir}"
-            )
         if self._knowledge_retriever is None:
             try:
-                vector_store = load_vector_store(str(vector_store_dir))
+                vector_store = load_vector_store(settings.knowledge_vector_store_dir)
             except Exception as exc:
                 raise RuntimeError(f"法律知识库加载失败：{exc}") from exc
             self._knowledge_retriever = ContractKnowledgeRetriever(vector_store)

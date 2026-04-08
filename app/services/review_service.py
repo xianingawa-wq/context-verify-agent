@@ -1,11 +1,10 @@
 ﻿from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from app.core.config import settings
 from app.rag.retriever import ContractKnowledgeRetriever
-from app.rag.vector_store import load_vector_store
+from app.rag.vector_store import is_knowledge_base_ready, load_vector_store
 from app.schemas.review import (
     HealthResponse,
     KnowledgeReference,
@@ -38,7 +37,7 @@ class ReviewService:
         return HealthResponse(
             status="ok",
             llm_configured=bool(settings.qwen_api_key and LLMReviewer),
-            knowledge_base_ready=Path(settings.knowledge_vector_store_dir).exists(),
+            knowledge_base_ready=is_knowledge_base_ready(settings.knowledge_vector_store_dir),
         )
 
     def review(self, payload: ReviewRequest) -> ReviewResponse:
@@ -98,14 +97,9 @@ class ReviewService:
         return self._llm_reviewer
 
     def _require_knowledge_retriever(self) -> ContractKnowledgeRetriever:
-        vector_store_dir = Path(settings.knowledge_vector_store_dir)
-        if not vector_store_dir.exists():
-            raise RuntimeError(
-                f"法律知识库未构建，请先生成向量索引目录: {settings.knowledge_vector_store_dir}"
-            )
         if self._knowledge_retriever is None:
             try:
-                vector_store = load_vector_store(str(vector_store_dir))
+                vector_store = load_vector_store(settings.knowledge_vector_store_dir)
             except Exception as exc:
                 raise RuntimeError(f"法律知识库加载失败：{exc}") from exc
             self._knowledge_retriever = ContractKnowledgeRetriever(vector_store)
@@ -123,7 +117,7 @@ class ReviewService:
         for risk in risks:
             clause_text = self._find_clause_text(document, risk)
             query = f"{contract_type} {risk.title} {risk.risk_domain or ''} {risk.evidence} {clause_text}"
-            retrieved_docs = knowledge_retriever.retrieve_documents(query=query, k=3)
+            retrieved_docs = knowledge_retriever.retrieve_documents_with_rerank(query=query, fetch_k=settings.retrieval_fetch_k, final_k=settings.retrieval_final_k)
             retrieved_contexts = [doc.page_content for doc in retrieved_docs]
             risk.basis_sources = [
                 KnowledgeReference(

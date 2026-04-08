@@ -2,8 +2,11 @@
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
+from app.core.config import settings
+from app.rag.knowledge_chunk_repository import KnowledgeChunkRepository
 from app.rag.knowledge_documents import build_knowledge_documents
 from app.rag.legal_chunker import LegalKnowledgeChunker
 from app.rag.vector_store import build_vector_store, save_vector_store
@@ -40,11 +43,14 @@ class KnowledgeIngestor:
         vector_store = build_vector_store(documents)
         save_vector_store(vector_store, output_dir)
 
+        metadata_rows = self._persist_chunk_metadata(chunks)
         return {
             "file_count": len(files),
             "chunk_count": len(chunks),
+            "metadata_rows": metadata_rows,
             "manifest_path": manifest_path,
             "vector_store_dir": output_dir,
+            "vector_backend": settings.vector_backend,
         }
 
     def _write_manifest(self, chunks: list[KnowledgeChunk], manifest_path: str) -> None:
@@ -54,9 +60,16 @@ class KnowledgeIngestor:
             for chunk in chunks:
                 handle.write(json.dumps(chunk.model_dump(), ensure_ascii=False) + "\n")
 
+    def _persist_chunk_metadata(self, chunks: list[KnowledgeChunk]) -> int:
+        if not settings.postgres_dsn:
+            return 0
+        version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        repository = KnowledgeChunkRepository()
+        return repository.upsert_chunks(chunks, version=version)
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest legal knowledge into a persistent FAISS vector store.")
+    parser = argparse.ArgumentParser(description="Ingest legal knowledge into a persistent vector store.")
     parser.add_argument("--source-dir", default="knowledge/laws")
     parser.add_argument("--output-dir", default="knowledge/ingested/laws_faiss")
     parser.add_argument("--manifest-path", default="knowledge/ingested/laws_chunks.jsonl")
