@@ -63,3 +63,10 @@ frontend/*.log
 frontend/.env*
 frontend/!.env.example
 frontend/README.md
+
+
+alembic/
+alembic.ini
+
+
+/reports

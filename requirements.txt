@@ -9,3 +9,7 @@ langchain-community==0.3.27
 langchain-openai==0.3.32
 faiss-cpu==1.12.0
 python-multipart==0.0.20
+sqlalchemy==2.0.41
+alembic==1.16.4
+psycopg[binary]==3.2.9
+pymilvus==2.5.1

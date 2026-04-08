@@ -6,10 +6,11 @@ from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
-from app.schemas.workbench import StoredChatThread, StoredHistoryLog, StoredReviewRecord, WorkbenchContract
+from app.schemas.workbench import StoredChatThread, StoredHistoryLog, StoredReviewRecord, WorkbenchContract, WorkbenchHistoryItem
+from app.services.workbench_repository_interface import IWorkbenchRepository
 
 
-class WorkbenchRepository:
+class WorkbenchRepository(IWorkbenchRepository):
     def __init__(self, base_dir: str | Path | None = None) -> None:
         self.base_dir = Path(base_dir or ".run/workbench")
         self.reviews_dir = self.base_dir / "reviews"
@@ -74,7 +75,7 @@ class WorkbenchRepository:
         path = self.history_dir / f"{history.contract_id}.json"
         self._write_json_file(path, history.model_dump(mode="json"))
 
-    def append_history_item(self, contract_id: str, item) -> StoredHistoryLog:
+    def append_history_item(self, contract_id: str, item: WorkbenchHistoryItem) -> StoredHistoryLog:
         history = self.get_history(contract_id)
         history.items.append(item)
         self.save_history(history)
@@ -87,6 +88,7 @@ class WorkbenchRepository:
         contract_type: str,
         status: str,
         author: str,
+        owner_username: str | None = None,
         content: str,
         source_file_name: str | None = None,
     ) -> WorkbenchContract:
@@ -98,6 +100,7 @@ class WorkbenchRepository:
             status=status,
             updated_at=now,
             author=author,
+            owner_username=owner_username,
             content=content,
             created_at=now,
             source_file_name=source_file_name,
@@ -125,6 +128,7 @@ class WorkbenchRepository:
                 "type": "采购合同",
                 "status": "reviewing",
                 "author": "李明",
+                "owner_username": "u1",
                 "updated_at": now - timedelta(hours=2),
                 "created_at": now - timedelta(days=3),
                 "content": "采购合同\n甲方：智联科技有限公司\n乙方：云端计算服务有限公司\n第一条 标的\n乙方应交付云计算资源及相关维护服务。\n第二条 付款方式\n甲方应于合同签订后5日内支付100%合同价款。\n第三条 争议解决\n争议由乙方所在地人民法院管辖。",
@@ -135,6 +139,7 @@ class WorkbenchRepository:
                 "type": "框架协议",
                 "status": "pending",
                 "author": "王芳",
+                "owner_username": "u2",
                 "updated_at": now - timedelta(days=1, hours=4),
                 "created_at": now - timedelta(days=5),
                 "content": "框架协议\n甲方：甲公司\n乙方：乙公司\n第一条 合作目标\n双方将在市场推广与联合解决方案方面开展合作。",
@@ -145,6 +150,7 @@ class WorkbenchRepository:
                 "type": "租赁合同",
                 "status": "approved",
                 "author": "张伟",
+                "owner_username": "u3",
                 "updated_at": now - timedelta(days=2),
                 "created_at": now - timedelta(days=7),
                 "content": "租赁合同\n甲方：园区运营公司\n乙方：智联科技有限公司\n第一条 租赁标的\n甲方将办公场地出租给乙方使用。",
@@ -155,6 +161,7 @@ class WorkbenchRepository:
                 "type": "服务合同",
                 "status": "rejected",
                 "author": "赵敏",
+                "owner_username": "u4",
                 "updated_at": now - timedelta(days=4),
                 "created_at": now - timedelta(days=9),
                 "content": "服务合同\n甲方：星云软件有限公司\n乙方：乙方开发团队\n第一条 服务内容\n乙方负责完成甲方委托的软件开发工作。",
