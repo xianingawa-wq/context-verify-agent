@@ -16,6 +16,7 @@ env/
 build/
 dist/
 backend-java/target/
+backend-java/uploads/
 frontend/dist/
 *.egg-info/
 .pytest_cache/
