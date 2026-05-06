@@ -25,6 +25,7 @@ import {
   getWorkbenchHistory,
   redraftWorkbenchContract,
   scanWorkbenchContract,
+  scanWorkbenchContractMulti,
   updateWorkbenchContractContent,
   sendWorkbenchChatMessageStream,
   updateWorkbenchIssueStatus,
@@ -61,6 +62,11 @@ export default function Review({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAiScanning, setIsAiScanning] = useState(false);
+  const [scanMode, setScanMode] = useState<'single' | 'multi'>('multi');
+  const [multiAgentStatus, setMultiAgentStatus] = useState<{
+    pipelineId: string;
+    agentSummaries: Array<{ agentId: string; status: string; inputSummary: string; findingsCount: number }>;
+  } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingReasoning, setStreamingReasoning] = useState<string[]>([]);
@@ -147,10 +153,23 @@ export default function Review({
 
     setIsAiScanning(true);
     setError(null);
+    setMultiAgentStatus(null);
     try {
-      const response = await scanWorkbenchContract(contractId);
-      setContract(response.contract);
-      setLatestReview(response.latestReview);
+      if (scanMode === 'multi') {
+        const result = await scanWorkbenchContractMulti(contractId);
+        setMultiAgentStatus({
+          pipelineId: result.pipelineId,
+          agentSummaries: result.agentSummaries,
+        });
+        // Refresh contract detail to get review results
+        const detail = await getWorkbenchContractDetail(contractId);
+        setContract(detail.contract);
+        setLatestReview(detail.latestReview);
+      } else {
+        const response = await scanWorkbenchContract(contractId);
+        setContract(response.contract);
+        setLatestReview(response.latestReview);
+      }
       await refreshHistory(contractId);
     } catch (scanError) {
       setError(scanError instanceof Error ? scanError.message : '执行 AI 扫描失败。');
@@ -386,6 +405,26 @@ export default function Review({
             <History size={18} />
             操作历史
           </button>
+          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
+            <button
+              onClick={() => setScanMode('single')}
+              className={cn(
+                'px-3 py-1 text-xs font-bold rounded-md transition-all',
+                scanMode === 'single' ? 'bg-surface text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              快速
+            </button>
+            <button
+              onClick={() => setScanMode('multi')}
+              className={cn(
+                'px-3 py-1 text-xs font-bold rounded-md transition-all',
+                scanMode === 'multi' ? 'bg-surface text-violet-600 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              深度
+            </button>
+          </div>
           <button
             onClick={() => void handleAiScan()}
             disabled={isAiScanning || isEditingContent || isSavingContent}
@@ -485,6 +524,32 @@ export default function Review({
                   <p className="text-sm text-blue-100 mb-6">
                     当前识别到 {pendingIssues.length} 个待处理风险点。你可以直接处理建议，或切换到对话页继续追问。
                   </p>
+                  {multiAgentStatus && (
+                    <div className="mb-6 bg-white/10 rounded-xl p-4 text-white">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold uppercase tracking-wider opacity-80">
+                          {scanMode === 'multi' ? 'Multi-Agent 流水线' : '单 Agent 审核'}
+                        </span>
+                        <span className="text-[10px] opacity-60 font-mono">
+                          {multiAgentStatus.pipelineId.slice(0, 8)}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {multiAgentStatus.agentSummaries.map((agent) => (
+                          <div key={agent.agentId} className="flex items-center gap-2 text-sm">
+                            <span className={scanMode === 'multi'
+                              ? agent.status === 'completed' ? 'text-emerald-300' : agent.status === 'running' ? 'text-amber-300 animate-pulse' : 'text-red-300'
+                              : 'text-emerald-300'
+                            }>
+                              {agent.status === 'completed' ? '✔' : agent.status === 'running' ? '●' : agent.status === 'skipped' ? '−' : '✘'}
+                            </span>
+                            <span className="flex-1 text-xs opacity-90">{agentLabel(agent.agentId)}</span>
+                            <span className="text-[10px] opacity-50">{agent.inputSummary}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     <StatBox
                       label="高风险"
@@ -1004,6 +1069,18 @@ function statusPillClassName(status: ContractStatus) {
     rejected: 'bg-red-50 text-red-600',
   };
   return classNames[status];
+}
+
+function agentLabel(id: string) {
+  const labels: Record<string, string> = {
+    parser: '解析',
+    risk_checker: '风险审查',
+    legal_ref: '法条引用',
+    redrafter: '改写建议',
+    summarizer: '汇总',
+    single_agent: '单 Agent',
+  };
+  return labels[id] ?? id;
 }
 
 function formatDateTime(value: string) {

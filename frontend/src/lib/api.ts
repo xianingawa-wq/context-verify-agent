@@ -209,6 +209,27 @@ export function finalizeWorkbenchContract(
   });
 }
 
+export function scanWorkbenchContractMulti(contractId: string, ourSide = '甲方') {
+  const formData = new FormData();
+  formData.set('our_side', ourSide);
+  return request<{
+    pipelineId: string;
+    mode: string;
+    status: string;
+    report: Record<string, unknown>;
+    agentSummaries: Array<{
+      agentId: string;
+      status: string;
+      inputSummary: string;
+      findingsCount: number;
+    }>;
+  }>(`/api/workbench/contracts/${contractId}/scan-multi`, {
+    method: 'POST',
+    body: formData,
+    headers: {},
+  });
+}
+
 export function scanWorkbenchContract(contractId: string, ourSide = '甲方') {
   const formData = new FormData();
   formData.set('our_side', ourSide);
